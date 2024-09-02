@@ -1,7 +1,7 @@
 // First we have to bring in mongoose
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-
+const bcrypt = require("bcrypt");
 // Here we define the schema for our users
 const userSchema = mongoose.Schema(
   {
@@ -41,6 +41,28 @@ const userSchema = mongoose.Schema(
     timestamps: true,
   }
 );
+async function generateHash(password) {
+  return bcrypt.hash(password, 12);
+}
+
+userSchema.pre('save', async function (next) {
+  const user = this;
+
+  if (user.isModified('password')) {
+    try {
+      const hash = await generateHash(user.password);
+      user.password = hash;
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
+  next();
+});
+
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 // We export the model `User` from the `UserSchema`
 module.exports = mongoose.model('User', userSchema);
